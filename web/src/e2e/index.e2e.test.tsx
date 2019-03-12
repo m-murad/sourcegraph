@@ -59,7 +59,12 @@ describe('e2e test suite', function(this: any): void {
             if (page && !page.isClosed()) {
                 await page.close()
             }
+            const process = browser.process()
+            if (process && !process.killed) {
+                process.kill()
+            }
             await browser.close()
+            // await browser.close()
         }
     })
 
