@@ -1,8 +1,15 @@
 import * as path from 'path'
 import puppeteer from 'puppeteer'
+import { ensureLoggedIn, readEnvString } from '../../../../shared/src/util/e2e-test-utils'
 import { saveScreenshotsUponFailuresAndClosePage } from '../../../../shared/src/util/screenshotReporter'
 
 const chromeExtensionPath = path.resolve(__dirname, '..', '..', 'build/chrome')
+
+const SOURCEGRAPH_BASE_URL = readEnvString({
+    variable: 'SOURCEGRAPH_BASE_URL',
+    defaultValue: 'https://sourcegraph.com',
+})
+const GOTODEF_SELECTOR = '.e2e-tooltip-go-to-definition'
 
 async function getTokenWithSelector(
     page: puppeteer.Page,
@@ -84,6 +91,36 @@ describe('Sourcegraph Chrome extension', () => {
 
     const repoBaseURL = 'https://github.com/gorilla/mux'
 
+    test('connects to sourcegraph.com by default', async () => {
+        await page.goto('chrome-extension://bmfbcejdknlknpncfpeloejonjoledha/options.html')
+        await page.waitForSelector('.server-url-form__input-container__status__indicator--success')
+    })
+
+    if (SOURCEGRAPH_BASE_URL !== 'https://sourcegraph.com') {
+        test("sets the Sourcegraph URL and warns the user he's not logged in", async () => {
+            await page.goto('chrome-extension://bmfbcejdknlknpncfpeloejonjoledha/options.html')
+            await page.waitForSelector('.server-url-form__input-container__input')
+            await page.focus('.server-url-form__input-container__input')
+            // Erase input value
+            await page.evaluate(
+                () =>
+                    ((document.querySelector('.server-url-form__input-container__input')! as HTMLInputElement).value =
+                        '')
+            )
+            await page.keyboard.type(SOURCEGRAPH_BASE_URL)
+            // Clear the focus on the input field.
+            await page.evaluate(() => (document.activeElement! as HTMLElement).blur())
+            await page.waitForSelector('.server-url-form__input-container__status__indicator--error')
+            await getTokenWithSelector(page, 'Sign in to your instance', '.server-url-form__error a')
+        })
+
+        test('connects to the instance once the user is logged in', async () => {
+            await ensureLoggedIn({ page, baseURL: SOURCEGRAPH_BASE_URL })
+            await page.goto('chrome-extension://bmfbcejdknlknpncfpeloejonjoledha/options.html')
+            await page.waitForSelector('.server-url-form__input-container__status__indicator--success')
+        })
+    }
+
     test('injects View on Sourcegraph', async () => {
         await page.goto(repoBaseURL)
         await page.waitForSelector('li#open-on-sourcegraph')
@@ -101,12 +138,12 @@ describe('Sourcegraph Chrome extension', () => {
 
         await clickElement(page, element)
 
-        await page.waitForSelector('.e2e-tooltip-j2d')
+        await page.waitForSelector(GOTODEF_SELECTOR)
     })
 
     const tokens = {
         base: { text: 'matchHost', selector: 'span.pl-v' },
-        head: { text: 'typ', selector: 'span.pl-v' },
+        head: { text: 'regexpType', selector: 'span.pl-v' },
     }
 
     for (const diffType of ['unified', 'split']) {
@@ -121,7 +158,7 @@ describe('Sourcegraph Chrome extension', () => {
                 await element.hover()
                 await page.waitForSelector('[data-path="regexp.go"] .code-view-toolbar .open-on-sourcegraph')
                 await clickElement(page, element)
-                await page.waitForSelector('.e2e-tooltip-j2d')
+                await page.waitForSelector(GOTODEF_SELECTOR)
             })
         }
     }

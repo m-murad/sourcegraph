@@ -3,8 +3,8 @@ import * as os from 'os'
 import * as path from 'path'
 import puppeteer from 'puppeteer'
 import { Key } from 'ts-key-enum'
+import { ensureLoggedIn, readEnvBoolean, readEnvString, retry } from '../../../shared/src/util/e2e-test-utils'
 import { saveScreenshotsUponFailuresAndClosePage } from '../../../shared/src/util/screenshotReporter'
-import { readEnvBoolean, readEnvString, retry } from '../util/e2e-test-utils'
 
 jest.setTimeout(30000)
 
@@ -26,7 +26,7 @@ describe('e2e test suite', function(this: any): void {
     let page: puppeteer.Page
 
     async function init(): Promise<void> {
-        await ensureLoggedIn()
+        await ensureLoggedIn({ page, baseURL })
         await ensureHasExternalService()
     }
 
@@ -62,23 +62,6 @@ describe('e2e test suite', function(this: any): void {
             await browser.close()
         }
     })
-
-    async function ensureLoggedIn(): Promise<void> {
-        await page.goto(baseURL)
-        const url = new URL(await page.url())
-        if (url.pathname === '/site-admin/init') {
-            await page.type('input[name=email]', 'test@test.com')
-            await page.type('input[name=username]', 'test')
-            await page.type('input[name=password]', 'test')
-            await page.click('button[type=submit]')
-            await page.waitForNavigation()
-        } else if (url.pathname === '/sign-in') {
-            await page.type('input', 'test')
-            await page.type('input[name=password]', 'test')
-            await page.click('button[type=submit]')
-            await page.waitForNavigation()
-        }
-    }
 
     async function ensureHasExternalService(): Promise<void> {
         await page.goto(baseURL + '/site-admin/external-services')

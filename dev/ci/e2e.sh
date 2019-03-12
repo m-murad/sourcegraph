@@ -40,5 +40,9 @@ pushd web
 env SOURCEGRAPH_BASE_URL="$URL" PERCY_ON=true ./node_modules/.bin/percy exec -- yarn run test-e2e
 popd
 
+pushd client/browser
+env SOURCEGRAPH_BASE_URL="$URL" yarn run test-e2e
+popd
+
 echo "Logs from the sourcegraph/server Docker container that was subject to e2e tests:"
 docker logs --timestamps "$CONTAINER"
