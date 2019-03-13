@@ -33,5 +33,5 @@ func main() {
 
 	pipeline.AddStep(":typescript:",
 		bk.Cmd("apt-get install -y time"),
-		bk.Cmd("time dev/ci/yarn-test.sh shared"))
+		bk.Cmd("/usr/bin/time -v dev/ci/yarn-test.sh shared"))
 }
