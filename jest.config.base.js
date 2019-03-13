@@ -1,5 +1,3 @@
-const os = require('os')
-
 // @ts-check
 
 /** @type {jest.InitialOptions} */
@@ -32,9 +30,6 @@ const config = {
       },
     },
   },
-  // 4 matches the CPU limits in
-  // infrastructure/kubernetes/ci/buildkite/buildkite-agent/buildkite-agent.Deployment.yaml
-  maxWorkers: process.env['CI'] === 'true' || process.env['BUILDKITE'] === 'true' ? 4 : os.cpus().length
 }
 
 module.exports = config
