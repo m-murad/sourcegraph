@@ -1,4 +1,4 @@
-import * as os from 'os'
+const os = require('os')
 
 // @ts-check
 
