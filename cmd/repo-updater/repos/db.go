@@ -22,6 +22,12 @@ type DB interface {
 	QueryContext(ctx context.Context, q string, args ...interface{}) (*sql.Rows, error)
 }
 
+// A Row represents a SQL row in a result set that contains a numeric ID column
+// by which it is sorted and paginated.
+type Row interface {
+	ID() uint64
+}
+
 // A Tx captures the essential methods of a sql.Tx.
 type Tx interface {
 	Rollback() error
@@ -109,7 +115,49 @@ func NewDB(dsn string) (*sql.DB, error) {
 	return db, nil
 }
 
-// MigrateDB runs all migrations from github.com/sourcegraph/sourcegraph/migrations
+// nullTime represents a time.Time that may be null. nullTime implements the
+// sql.Scanner interface so it can be used as a scan destination, similar to
+// sql.NullString. When the scanned value is null, Time is set to the zero value.
+type nullTime struct{ *time.Time }
+
+// Scan implements the Scanner interface.
+func (nt *nullTime) Scan(value interface{}) error {
+	*nt.Time, _ = value.(time.Time)
+	return nil
+}
+
+// Value implements the driver Valuer interface.
+func (nt nullTime) Value() (driver.Value, error) {
+	if nt.Time == nil {
+		return nil, nil
+	}
+	return *nt.Time, nil
+}
+
+// nullString represents a string that may be null. nullString implements the
+// sql.Scanner interface so it can be used as a scan destination, similar to
+// sql.NullString. When the scanned value is null, String is set to the zero value.
+type nullString struct{ s *string }
+
+// Scan implements the Scanner interface.
+func (nt *nullString) Scan(value interface{}) error {
+	*nt.s, _ = value.(string)
+	return nil
+}
+
+// Value implements the driver Valuer interface.
+func (nt nullString) Value() (driver.Value, error) {
+	if nt.s == nil {
+		return nil, nil
+	}
+	return *nt.s, nil
+}
+
+// A Migration function performs a data migration on the given sql.DB,
+// returning an error in case of failure.
+type Migration func(*sql.DB) error
+
+// MigrateDB runs all pure SQL migrations from github.com/sourcegraph/sourcegraph/migrations
 // against the given sql.DB
 func MigrateDB(db *sql.DB) error {
 	var cfg postgres.Config
@@ -147,42 +195,4 @@ func MigrateDB(db *sql.DB) error {
 		return nil
 	}
 	return err
-}
-
-// nullTime represents a time.Time that may be null. nullTime implements the
-// sql.Scanner interface so it can be used as a scan destination, similar to
-// sql.NullString. When the scanned value is null, Time is set to the zero value.
-type nullTime struct{ *time.Time }
-
-// Scan implements the Scanner interface.
-func (nt *nullTime) Scan(value interface{}) error {
-	*nt.Time, _ = value.(time.Time)
-	return nil
-}
-
-// Value implements the driver Valuer interface.
-func (nt nullTime) Value() (driver.Value, error) {
-	if nt.Time == nil {
-		return nil, nil
-	}
-	return *nt.Time, nil
-}
-
-// nullString represents a string that may be null. nullString implements the
-// sql.Scanner interface so it can be used as a scan destination, similar to
-// sql.NullString. When the scanned value is null, String is set to the zero value.
-type nullString struct{ s *string }
-
-// Scan implements the Scanner interface.
-func (nt *nullString) Scan(value interface{}) error {
-	*nt.s, _ = value.(string)
-	return nil
-}
-
-// Value implements the driver Valuer interface.
-func (nt nullString) Value() (driver.Value, error) {
-	if nt.s == nil {
-		return nil, nil
-	}
-	return *nt.s, nil
 }

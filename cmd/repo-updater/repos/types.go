@@ -7,6 +7,17 @@ import (
 	"github.com/sourcegraph/sourcegraph/pkg/api"
 )
 
+// An ExternalService is defines a Source that yields Repos.
+type ExternalService struct {
+	ID          int64
+	Kind        string
+	DisplayName string
+	Config      string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeletedAt   time.Time
+}
+
 // Repo represents a source code repository stored in Sourcegraph.
 type Repo struct {
 	// The internal Sourcegraph repo ID.
